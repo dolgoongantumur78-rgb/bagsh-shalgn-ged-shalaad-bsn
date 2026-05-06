@@ -1,0 +1,139 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { BrainCircuitIcon, ArrowRightIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [form, setForm]       = useState({ name: "", email: "", password: "", role: "JOBSEEKER" });
+  const [error, setError]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true); setError("");
+    try {
+      const res  = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      setLoading(false);
+      if (!res.ok) setError(data.error ?? "Алдаа гарлаа");
+      else router.push("/login?registered=1");
+    } catch {
+      setLoading(false);
+      setError("Серверт холбогдоход алдаа гарлаа");
+    }
+  }
+
+  const inputSty: React.CSSProperties = {
+    border: "1.5px solid #E2E7EF",
+    background: "#F7F8FA",
+    color: "#111827",
+    borderRadius: 10,
+    padding: "10px 14px",
+    fontSize: 14,
+    width: "100%",
+    outline: "none",
+    transition: "border-color 0.15s",
+  };
+
+  return (
+    <div className="min-h-[85vh] flex items-center justify-center py-10">
+      <div className="w-full max-w-md">
+        <div
+          className="rounded-2xl p-8 sm:p-10 border"
+          style={{ background: "#FFFFFF", borderColor: "#E2E7EF", boxShadow: "0 4px 32px rgba(17,24,39,0.06)" }}
+        >
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#111827" }}>
+              <BrainCircuitIcon className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-extrabold" style={{ color: "#111827" }}>
+              Mind<span style={{ color: "#4B7BF5" }}>Match</span>
+            </span>
+          </div>
+
+          <h1 className="text-2xl font-extrabold text-center mb-1.5" style={{ color: "#111827" }}>
+            Бүртгэл үүсгэх
+          </h1>
+          <p className="text-sm text-center mb-8" style={{ color: "#6B7280" }}>
+            Үнэгүй бүртгүүлж тохирох ажлаа олоорой
+          </p>
+
+          {error && (
+            <div className="px-4 py-3 rounded-xl text-sm mb-5" style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECDD3" }}>
+              ⚠ {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {([
+              { k: "name",  label: "Нэр",   type: "text",  ph: "Таны бүтэн нэр" },
+              { k: "email", label: "Имэйл", type: "email", ph: "email@example.com" },
+            ] as const).map(({ k, label, type, ph }) => (
+              <div key={k}>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: "#374151" }}>{label}</label>
+                <input
+                  type={type}
+                  required
+                  value={form[k]}
+                  onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                  placeholder={ph}
+                  style={inputSty}
+                />
+              </div>
+            ))}
+
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#374151" }}>Нууц үг</label>
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  required
+                  minLength={6}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="Дор хаяж 6 тэмдэгт"
+                  style={{ ...inputSty, paddingRight: 44 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "#9CA3AF" }}
+                >
+                  {showPass ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+              style={{ background: "#4B7BF5", boxShadow: "0 4px 14px rgba(75,123,245,0.35)" }}
+            >
+              {loading ? (
+                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Бүртгэж байна...</>
+              ) : (
+                <>Бүртгүүлэх <ArrowRightIcon className="h-4 w-4" /></>
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-sm mt-7" style={{ color: "#6B7280" }}>
+            Бүртгэлтэй юу?{" "}
+            <Link href="/login" className="font-bold hover:underline" style={{ color: "#4B7BF5" }}>Нэвтрэх</Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

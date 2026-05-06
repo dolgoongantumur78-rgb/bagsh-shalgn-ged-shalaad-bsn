@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  JOBSEEKER
+  EMPLOYER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  password      String
+  role          Role     @default(JOBSEEKER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  profile       Profile?
+  jobs          Job[]
+  applications  Application[]
+  assessment    Assessment?
+}
+
+model Profile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  bio         String? @db.Text
+  phone       String?
+  location    String?
+  skills      String? @db.Text
+  experience  String? @db.Text
+  companyName String?
+  industry    String?
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id                String   @id @default(cuid())
+  title             String
+  description       String   @db.LongText
+  requirements      String   @db.Text
+  location          String
+  salary            String?
+  jobType           String
+  category          String
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  employerId        String
+
+  openness          Int      @default(50)
+  conscientiousness Int      @default(50)
+  extraversion      Int      @default(50)
+  agreeableness     Int      @default(50)
+  neuroticism       Int      @default(50)
+
+  employer          User         @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  applications      Application[]
+}
+
+model Assessment {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  completedAt       DateTime @default(now())
+
+  openness          Int
+  conscientiousness Int
+  extraversion      Int
+  agreeableness     Int
+  neuroticism       Int
+
+  workStyle         String?
+  strengths         String? @db.Text
+  idealEnvironment  String? @db.Text
+
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  jobId       String
+  userId      String
+  coverLetter String?           @db.Text
+  cvUrl       String?
+  status      ApplicationStatus @default(PENDING)
+  matchScore  Int?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  job         Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, userId])
+}
