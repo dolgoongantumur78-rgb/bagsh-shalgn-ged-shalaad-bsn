@@ -40,18 +40,27 @@ export default function JobsPage() {
   const [search, setSearch] = useState("");
   const [cat, setCat]       = useState("Бүгд");
 
-  useEffect(() => { fetchJobs(); }, [cat]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function fetchJobs() {
+  useEffect(() => {
+    const ac = new AbortController();
+    const p = new URLSearchParams();
+    if (cat !== "Бүгд") p.set("category", cat);
     setLoading(true);
+    fetch(`/api/jobs?${p}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((data) => { setJobs(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch((err) => { if (err.name !== "AbortError") setLoading(false); });
+    return () => ac.abort();
+  }, [cat]);
+
+  function fetchJobs() {
     const p = new URLSearchParams();
     if (cat !== "Бүгд") p.set("category", cat);
     if (search) p.set("search", search);
-    try {
-      const res = await fetch(`/api/jobs?${p}`);
-      setJobs(await res.json());
-    } catch { /* ignore */ }
-    setLoading(false);
+    setLoading(true);
+    fetch(`/api/jobs?${p}`)
+      .then((r) => r.json())
+      .then((data) => { setJobs(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
   }
 
   return (

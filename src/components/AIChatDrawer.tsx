@@ -36,9 +36,12 @@ export default function AIChatDrawer() {
   const [confirmClear, setConfirmClear] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   useEffect(() => {
-    if (open) setTimeout(() => textareaRef.current?.focus(), 300);
+    if (!open) return;
+    const id = setTimeout(() => textareaRef.current?.focus(), 300);
+    return () => clearTimeout(id);
   }, [open]);
 
   useEffect(() => {
@@ -49,12 +52,18 @@ export default function AIChatDrawer() {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (replyTo) { setReplyTo(null); return; }
+        readerRef.current?.cancel();
         close();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [close, replyTo]);
+
+  // Cancel any in-flight stream when drawer closes
+  useEffect(() => {
+    if (!open) readerRef.current?.cancel();
+  }, [open]);
 
   function clearChat() {
     setMessages([]);
@@ -96,16 +105,36 @@ export default function AIChatDrawer() {
       });
       if (!res.body) throw new Error();
       const reader = res.body.getReader();
+      readerRef.current = reader;
       const decoder = new TextDecoder();
       let full = "";
+      let updateTimer: NodeJS.Timeout | null = null;
+      
+      const updateUI = () => {
+        setMessages([...next, { ...assistantMsg, content: full }]);
+      };
+      
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         full += decoder.decode(value, { stream: true });
-        setMessages([...next, { ...assistantMsg, content: full }]);
+        
+        // Batch updates: only update UI every 100ms instead of every chunk
+        if (!updateTimer) {
+          updateTimer = setTimeout(() => {
+            updateUI();
+            updateTimer = null;
+          }, 100);
+        }
       }
+      
+      // Final update to ensure all content is rendered
+      if (updateTimer) clearTimeout(updateTimer);
+      updateUI();
     } catch {
       setMessages([...next, { ...assistantMsg, content: "Алдаа гарлаа. Дахин оролдоно уу." }]);
+    } finally {
+      readerRef.current = null;
     }
     setLoading(false);
   }

@@ -62,13 +62,29 @@ export default function AIPage() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let full = "";
+      let updateTimer: NodeJS.Timeout | null = null;
+      
+      const updateUI = () => {
+        setMessages([...next, { role: "assistant", content: full }]);
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         full += decoder.decode(value, { stream: true });
-        setMessages([...next, { role: "assistant", content: full }]);
+        
+        // Batch updates: only update UI every 100ms instead of every chunk
+        if (!updateTimer) {
+          updateTimer = setTimeout(() => {
+            updateUI();
+            updateTimer = null;
+          }, 100);
+        }
       }
+      
+      // Final update to ensure all content is rendered
+      if (updateTimer) clearTimeout(updateTimer);
+      updateUI();
     } catch {
       setMessages([...next, { role: "assistant", content: "Алдаа гарлаа. Дахин оролдоно уу." }]);
     }

@@ -61,11 +61,13 @@ export default function DashboardPage() {
   }, [status, session, router]);
 
   useEffect(() => {
-    if (session) {
-      fetch("/api/assessment").then((r) => r.json()).then(setAssessment);
-      fetch("/api/applications").then((r) => r.json()).then(setApplications);
-      fetch("/api/jobs").then((r) => r.json()).then((data) => setJobs(data.slice(0, 6)));
-    }
+    if (!session) return;
+    const ac = new AbortController();
+    const { signal } = ac;
+    fetch("/api/assessment",   { signal }).then((r) => r.json()).then(setAssessment).catch(() => {});
+    fetch("/api/applications", { signal }).then((r) => r.json()).then(setApplications).catch(() => {});
+    fetch("/api/jobs",         { signal }).then((r) => r.json()).then((data) => setJobs(Array.isArray(data) ? data.slice(0, 6) : [])).catch(() => {});
+    return () => ac.abort();
   }, [session]);
 
   if (status === "loading") return (
