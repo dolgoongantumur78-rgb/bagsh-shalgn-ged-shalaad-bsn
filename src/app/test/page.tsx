@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { BrainCircuitIcon, CheckIcon, SparklesIcon } from "lucide-react";
+import Link from "next/link";
+import { BrainCircuitIcon, CheckIcon, SparklesIcon, ArrowRightIcon } from "lucide-react";
+import { getRecommendedProfessions, CATEGORIES, type RequirementLevel } from "@/data/professions";
 
 /* ─────────────────────────── types ─────────────────────────── */
 type Section = "MBTI" | "IQ" | "EQ";
@@ -284,8 +286,12 @@ export default function TestPage() {
     const eqLabel = eqPct < 40 ? "Бага" : eqPct < 70 ? "Дунд" : "Өндөр";
     const eqColor = eqPct < 40 ? "#EF4444" : eqPct < 70 ? "#F59E0B" : "#16A34A";
 
+    const iqLevel: RequirementLevel = iqScore <= 2 ? "low" : iqScore <= 3 ? "medium" : "high";
+    const eqLevel: RequirementLevel = eqPct < 40 ? "low" : eqPct < 70 ? "medium" : "high";
+    const recommended = getRecommendedProfessions(mbtiType, iqLevel, eqLevel, 5);
+
     return (
-      <div className="max-w-md mx-auto py-10 space-y-4">
+      <div className="max-w-lg mx-auto py-10 space-y-4">
         <div className="text-center mb-2">
           <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "#ECFDF3" }}>
             <CheckIcon className="h-7 w-7" style={{ color: "#16A34A" }} />
@@ -331,6 +337,93 @@ export default function TestPage() {
               : "Өндөр сэтгэлийн оюун — хүмүүстэй харилцахдаа давуу тал",
           ]}
         />
+
+        {/* ── Career recommendations ── */}
+        <div
+          className="rounded-2xl overflow-hidden border"
+          style={{ borderColor: "rgba(75,123,245,0.25)" }}
+        >
+          {/* header */}
+          <div
+            className="px-4 py-3 flex items-center gap-2"
+            style={{ background: "linear-gradient(135deg, #0D1117 0%, #1A2440 100%)" }}
+          >
+            <SparklesIcon className="h-4 w-4" style={{ color: "#93B8FC" }} />
+            <span className="text-sm font-bold text-white">Таны мэргэжлийн зөвлөмж</span>
+            <span
+              className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(75,123,245,0.30)", color: "#93B8FC" }}
+            >
+              {mbtiType} · IQ {iqLabel} · EQ {eqLabel}
+            </span>
+          </div>
+
+          {/* profession list */}
+          <div className="divide-y" style={{ background: "#FFFFFF", borderColor: "#F3F4F6" }}>
+            {recommended.map((p, i) => {
+              const cat = CATEGORIES[p.category];
+              const rankColors = ["#F59E0B", "#9CA3AF", "#CD7F32", "#6B7280", "#6B7280"];
+              return (
+                <Link
+                  key={p.slug}
+                  href={`/professions/${p.slug}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                >
+                  {/* rank */}
+                  <span
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0"
+                    style={{ background: rankColors[i] + "22", color: rankColors[i] }}
+                  >
+                    {i + 1}
+                  </span>
+
+                  {/* emoji */}
+                  <span
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                    style={{ background: cat.bg }}
+                  >
+                    {p.emoji}
+                  </span>
+
+                  {/* info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: "#111827" }}>
+                      {p.titleMn}
+                    </p>
+                    <p className="text-[11px] truncate" style={{ color: "#9CA3AF" }}>
+                      {p.titleEn} · {cat.name}
+                    </p>
+                  </div>
+
+                  {/* demand */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{
+                        background: p.demandLevel === "high" ? "#DCFCE7" : p.demandLevel === "medium" ? "#FEF3C7" : "#F3F4F6",
+                        color:      p.demandLevel === "high" ? "#059669" : p.demandLevel === "medium" ? "#D97706" : "#6B7280",
+                      }}
+                    >
+                      {p.demandLevel === "high" ? "Эрэлт өндөр" : p.demandLevel === "medium" ? "Дунд" : "Бага"}
+                    </span>
+                    <ArrowRightIcon className="h-3.5 w-3.5" style={{ color: "#D1D5DB" }} />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* footer */}
+          <div className="px-4 py-3" style={{ background: "#F9FAFB", borderTop: "1px solid #F3F4F6" }}>
+            <Link
+              href="/professions"
+              className="flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+              style={{ color: "#4B7BF5" }}
+            >
+              Бүх мэргэжлийг үзэх <ArrowRightIcon className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
 
         <button
           onClick={() => { setPhase("intro"); setIndex(0); setAnswers({}); setSelected(null); }}

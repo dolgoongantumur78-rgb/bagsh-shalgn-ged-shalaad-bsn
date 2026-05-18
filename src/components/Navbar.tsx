@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { BrainCircuitIcon, BriefcaseIcon, LogOutIcon, PlusIcon, LayoutDashboardIcon, SparklesIcon, SettingsIcon, BotIcon } from "lucide-react";
+import { BrainCircuitIcon, BriefcaseIcon, LogOutIcon, PlusIcon, LayoutDashboardIcon, SparklesIcon, SettingsIcon, BotIcon, BookOpenIcon } from "lucide-react";
 import { useAIDrawer } from "@/context/AIDrawerContext";
 
 export default function Navbar() {
@@ -71,6 +71,7 @@ export default function Navbar() {
 
           {/* Nav */}
           <nav className="flex items-center gap-1">
+            <NavLink href="/professions" label="Мэргэжлүүд" icon={<BookOpenIcon className="h-4 w-4" />} />
             <NavLink href="/jobs" label="Ажлын байр" icon={<BriefcaseIcon className="h-4 w-4" />} />
 
             {session ? (
