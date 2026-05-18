@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -38,6 +38,7 @@ model User {
 model Profile {
   id          String  @id @default(cuid())
   userId      String  @unique
+  avatarUrl   String?
   bio         String? @db.Text
   phone       String?
   location    String?
@@ -52,7 +53,7 @@ model Profile {
 model Job {
   id                String   @id @default(cuid())
   title             String
-  description       String   @db.LongText
+  description       String   @db.Text
   requirements      String   @db.Text
   location          String
   salary            String?
@@ -71,6 +72,10 @@ model Job {
 
   employer          User         @relation(fields: [employerId], references: [id], onDelete: Cascade)
   applications      Application[]
+
+  @@index([isActive, createdAt(sort: Desc)])
+  @@index([isActive, category, createdAt(sort: Desc)])
+  @@index([employerId, createdAt(sort: Desc)])
 }
 
 model Assessment {
@@ -106,4 +111,7 @@ model Application {
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([jobId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
 }

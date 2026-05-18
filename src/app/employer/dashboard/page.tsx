@@ -35,6 +35,7 @@ export default function EmployerDashboard() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
+    else if (status === "authenticated" && session?.user.role === "ADMIN") router.push("/admin");
     else if (status === "authenticated" && session?.user.role !== "EMPLOYER") router.push("/dashboard");
   }, [status, session, router]);
 

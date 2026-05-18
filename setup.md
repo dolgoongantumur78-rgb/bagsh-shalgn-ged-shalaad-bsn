@@ -1,41 +1,27 @@
-# MindMatch - Суулгах заавар
+# MindMatch - Setup Guide
 
-## 1. MySQL database үүсгэх
-
-```sql
-CREATE DATABASE setgelzui_hiring CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-## 2. .env файл тохируулах
+## 1. Configure `.env`
 
 ```env
-DATABASE_URL="mysql://YOUR_USER:YOUR_PASSWORD@localhost:3306/setgelzui_hiring"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/DB?sslmode=require"
 NEXTAUTH_SECRET="generate-a-random-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
-## 3. Migration ажиллуулах
+## 2. Apply the Neon baseline migration
 
 ```bash
-npx prisma migrate dev --name init
+npx prisma db execute --file prisma/migrations/20260518061000_neon_postgres_init/migration.sql --schema prisma/schema.prisma
 ```
 
-## 4. Dev server эхлүүлэх
+## 3. Generate Prisma Client
+
+```bash
+npx prisma generate
+```
+
+## 4. Start the app
 
 ```bash
 npm run dev
 ```
-
-## Хуудсуудын жагсаалт
-
-| Хуудас | URL | Тайлбар |
-|--------|-----|---------|
-| Нүүр хуудас | / | Hero, features |
-| Бүртгүүлэх | /register | Ажил хайгч / Ажил олгогч |
-| Нэвтрэх | /login | |
-| Ажлын байрууд | /jobs | Хайх, шүүх |
-| Ажлын дэлгэрэнгүй | /jobs/[id] | Өргөдөл гаргах |
-| Тест өгөх | /assessment | Big Five 15 асуулт |
-| Миний хуудас | /dashboard | Профайл, өргөдлүүд |
-| Ажил нийтлэх | /employer/post-job | Психологийн шаардлага |
-| Ажил олгогчийн самбар | /employer/dashboard | Өргөдөл хянах |

@@ -1,20 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  UserIcon, MailIcon, PhoneIcon, MapPinIcon, BriefcaseIcon,
-  BuildingIcon, TagIcon, FileTextIcon, SaveIcon, CheckIcon, ArrowLeftIcon,
+  ArrowLeftIcon,
+  BuildingIcon,
+  CameraIcon,
+  CheckIcon,
+  FileTextIcon,
+  MailIcon,
+  MapPinIcon,
+  PhoneIcon,
+  SaveIcon,
+  TagIcon,
+  UserIcon,
+  BriefcaseIcon,
 } from "lucide-react";
 
 interface ProfileData {
   name: string;
   email: string;
-  role: string;
+  role: "JOBSEEKER" | "EMPLOYER" | "ADMIN";
   createdAt: string;
   profile: {
+    avatarUrl: string | null;
     bio: string | null;
     phone: string | null;
     location: string | null;
@@ -35,7 +46,7 @@ const inputStyle = {
   width: "100%",
   outline: "none",
   transition: "border-color 0.15s",
-};
+} as const;
 
 export default function ProfilePage() {
   const { data: session, status, update } = useSession();
@@ -43,11 +54,20 @@ export default function ProfilePage() {
 
   const [data, setData] = useState<ProfileData | null>(null);
   const [form, setForm] = useState({
-    name: "", bio: "", phone: "", location: "",
-    skills: "", experience: "", companyName: "", industry: "",
+    name: "",
+    avatarUrl: "",
+    bio: "",
+    phone: "",
+    location: "",
+    skills: "",
+    experience: "",
+    companyName: "",
+    industry: "",
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -60,17 +80,81 @@ export default function ProfilePage() {
       .then((d: ProfileData) => {
         setData(d);
         setForm({
-          name:        d.name ?? "",
-          bio:         d.profile?.bio ?? "",
-          phone:       d.profile?.phone ?? "",
-          location:    d.profile?.location ?? "",
-          skills:      d.profile?.skills ?? "",
-          experience:  d.profile?.experience ?? "",
+          name: d.name ?? "",
+          avatarUrl: d.profile?.avatarUrl ?? "",
+          bio: d.profile?.bio ?? "",
+          phone: d.profile?.phone ?? "",
+          location: d.profile?.location ?? "",
+          skills: d.profile?.skills ?? "",
+          experience: d.profile?.experience ?? "",
           companyName: d.profile?.companyName ?? "",
-          industry:    d.profile?.industry ?? "",
+          industry: d.profile?.industry ?? "",
         });
       });
   }, [session]);
+
+  const isEmployer = data?.role === "EMPLOYER";
+  const isAdmin = data?.role === "ADMIN";
+  const backHref = useMemo(() => {
+    if (isEmployer) return "/employer/dashboard";
+    if (isAdmin) return "/admin";
+    return "/dashboard";
+  }, [isEmployer, isAdmin]);
+
+  async function handleAvatarUpload(file: File | null) {
+    if (!file) return;
+    setAvatarError("");
+    setUploadingAvatar(true);
+
+    const fd = new FormData();
+    fd.append("avatar", file);
+
+    try {
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+      const uploadData = (await uploadRes.json()) as { url?: string; error?: string };
+      if (!uploadRes.ok || !uploadData.url) {
+        setAvatarError(uploadData.error ?? "Avatar upload failed");
+        setUploadingAvatar(false);
+        return;
+      }
+
+      const avatarUrl = uploadData.url;
+      const saveRes = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl }),
+      });
+
+      if (!saveRes.ok) {
+        setAvatarError("Avatar saved failed");
+      } else {
+        setForm((prev) => ({ ...prev, avatarUrl }));
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                profile: prev.profile
+                  ? { ...prev.profile, avatarUrl }
+                  : {
+                      avatarUrl,
+                      bio: null,
+                      phone: null,
+                      location: null,
+                      skills: null,
+                      experience: null,
+                      companyName: null,
+                      industry: null,
+                    },
+              }
+            : prev
+        );
+      }
+    } catch {
+      setAvatarError("Avatar upload failed");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -82,7 +166,7 @@ export default function ProfilePage() {
     });
     setSaving(false);
     if (res.ok) {
-      const json = await res.json();
+      const json = (await res.json()) as { name?: string };
       await update({ name: json.name });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -97,78 +181,109 @@ export default function ProfilePage() {
     );
   }
 
-  const isEmployer = data.role === "EMPLOYER";
+  const badgeText = isAdmin ? "Админ" : isEmployer ? "Ажил олгогч" : "Ажил хайгч";
 
   return (
     <div className="max-w-2xl mx-auto py-8 space-y-6">
-
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Link
-          href={isEmployer ? "/employer/dashboard" : "/dashboard"}
+          href={backHref}
           className="p-2 rounded-xl transition-all hover:opacity-70"
           style={{ background: "#F0FDFA", color: "#4B7BF5" }}
         >
           <ArrowLeftIcon className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-extrabold" style={{ color: "#111827" }}>Профайл засах</h1>
-          <p className="text-xs" style={{ color: "#6B7280" }}>Мэдээллээ шинэчлэх</p>
+          <h1 className="text-xl font-extrabold" style={{ color: "#111827" }}>
+            Profile
+          </h1>
+          <p className="text-xs" style={{ color: "#6B7280" }}>
+            Update your account
+          </p>
         </div>
       </div>
 
-      {/* Avatar card */}
       <div
-        className="rounded-2xl p-6 flex items-center gap-5"
+        className="rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center gap-5"
         style={{ background: "linear-gradient(135deg, #0D1117 0%, #1A2440 100%)" }}
       >
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-extrabold text-white shrink-0"
-          style={{ background: "linear-gradient(135deg, #4B7BF5, #6B94F8)" }}
-        >
-          {form.name?.[0]?.toUpperCase() ?? "U"}
+        <div className="relative w-16 h-16 shrink-0">
+          {form.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={form.avatarUrl}
+              alt="Profile avatar"
+              className="w-16 h-16 rounded-2xl object-cover border"
+              style={{ borderColor: "rgba(255,255,255,0.25)" }}
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-extrabold text-white"
+              style={{ background: "linear-gradient(135deg, #4B7BF5, #6B94F8)" }}
+            >
+              {form.name?.[0]?.toUpperCase() ?? "U"}
+            </div>
+          )}
+          <label
+            className="absolute -right-1 -bottom-1 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer border"
+            style={{ background: "#EEF2FE", borderColor: "#D5E3FC", color: "#4B7BF5" }}
+            title="Upload avatar"
+          >
+            <CameraIcon className="h-3.5 w-3.5" />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => handleAvatarUpload(e.target.files?.[0] ?? null)}
+              disabled={uploadingAvatar}
+            />
+          </label>
         </div>
-        <div>
-          <p className="font-extrabold text-white text-lg">{form.name || "—"}</p>
-          <p className="text-sm" style={{ color: "#99F6E4" }}>{data.email}</p>
+        <div className="flex-1">
+          <p className="font-extrabold text-white text-lg">{form.name || "-"}</p>
+          <p className="text-sm" style={{ color: "#99F6E4" }}>
+            {data.email}
+          </p>
           <span
             className="inline-block mt-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
             style={{ background: "rgba(13,148,136,0.25)", color: "#5EEAD4" }}
           >
-            {isEmployer ? "Ажил олгогч" : "Ажил хайгч"}
+            {badgeText}
           </span>
+          {uploadingAvatar && (
+            <p className="text-[11px] mt-2" style={{ color: "#C4D8FD" }}>
+              Uploading avatar...
+            </p>
+          )}
+          {avatarError && (
+            <p className="text-[11px] mt-2" style={{ color: "#FCA5A5" }}>
+              {avatarError}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSave} className="space-y-5">
+        <div className="rounded-2xl border p-6 space-y-4" style={{ background: "#FFFFFF", borderColor: "#E2E7EF" }}>
+          <p className="text-sm font-bold" style={{ color: "#111827" }}>
+            Basic Info
+          </p>
 
-        {/* Basic info */}
-        <div
-          className="rounded-2xl border p-6 space-y-4"
-          style={{ background: "#FFFFFF", borderColor: "#E2E7EF" }}
-        >
-          <p className="text-sm font-bold" style={{ color: "#111827" }}>Үндсэн мэдээлэл</p>
-
-          <Field label="Нэр" icon={<UserIcon className="h-4 w-4" />}>
+          <Field label="Name" icon={<UserIcon className="h-4 w-4" />}>
             <input
               style={inputStyle}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Таны бүтэн нэр"
+              placeholder="Your name"
             />
           </Field>
 
-          <Field label="Имэйл" icon={<MailIcon className="h-4 w-4" />}>
-            <input
-              style={{ ...inputStyle, opacity: 0.6, cursor: "not-allowed" }}
-              value={data.email}
-              disabled
-            />
+          <Field label="Email" icon={<MailIcon className="h-4 w-4" />}>
+            <input style={{ ...inputStyle, opacity: 0.6, cursor: "not-allowed" }} value={data.email} disabled />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Утас" icon={<PhoneIcon className="h-4 w-4" />}>
+            <Field label="Phone" icon={<PhoneIcon className="h-4 w-4" />}>
               <input
                 style={inputStyle}
                 value={form.phone}
@@ -176,77 +291,78 @@ export default function ProfilePage() {
                 placeholder="99xxxxxx"
               />
             </Field>
-            <Field label="Байршил" icon={<MapPinIcon className="h-4 w-4" />}>
+            <Field label="Location" icon={<MapPinIcon className="h-4 w-4" />}>
               <input
                 style={inputStyle}
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
-                placeholder="Улаанбаатар"
+                placeholder="Ulaanbaatar"
               />
             </Field>
           </div>
 
-          <Field label="Товч танилцуулга" icon={<FileTextIcon className="h-4 w-4" />}>
+          <Field label="Bio" icon={<FileTextIcon className="h-4 w-4" />}>
             <textarea
               rows={3}
               style={{ ...inputStyle, resize: "none" }}
               value={form.bio}
               onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              placeholder="Өөрийгөө товчхон танилцуулна уу..."
+              placeholder="Short bio..."
             />
           </Field>
         </div>
 
-        {/* Role-specific fields */}
-        <div
-          className="rounded-2xl border p-6 space-y-4"
-          style={{ background: "#FFFFFF", borderColor: "#E2E7EF" }}
-        >
-          {isEmployer ? (
-            <>
-              <p className="text-sm font-bold" style={{ color: "#111827" }}>Байгууллагын мэдээлэл</p>
-              <Field label="Компанийн нэр" icon={<BuildingIcon className="h-4 w-4" />}>
-                <input
-                  style={inputStyle}
-                  value={form.companyName}
-                  onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                  placeholder="ХХК нэр"
-                />
-              </Field>
-              <Field label="Салбар / Чиглэл" icon={<BriefcaseIcon className="h-4 w-4" />}>
-                <input
-                  style={inputStyle}
-                  value={form.industry}
-                  onChange={(e) => setForm({ ...form, industry: e.target.value })}
-                  placeholder="Мэдээллийн технологи, Санхүү..."
-                />
-              </Field>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-bold" style={{ color: "#111827" }}>Мэргэжлийн мэдээлэл</p>
-              <Field label="Ур чадвар" icon={<TagIcon className="h-4 w-4" />}>
-                <input
-                  style={inputStyle}
-                  value={form.skills}
-                  onChange={(e) => setForm({ ...form, skills: e.target.value })}
-                  placeholder="React, TypeScript, Node.js..."
-                />
-              </Field>
-              <Field label="Туршлага" icon={<BriefcaseIcon className="h-4 w-4" />}>
-                <textarea
-                  rows={4}
-                  style={{ ...inputStyle, resize: "none" }}
-                  value={form.experience}
-                  onChange={(e) => setForm({ ...form, experience: e.target.value })}
-                  placeholder="Өмнөх ажлын туршлагаа бичнэ үү..."
-                />
-              </Field>
-            </>
-          )}
-        </div>
+        {!isAdmin && (
+          <div className="rounded-2xl border p-6 space-y-4" style={{ background: "#FFFFFF", borderColor: "#E2E7EF" }}>
+            {isEmployer ? (
+              <>
+                <p className="text-sm font-bold" style={{ color: "#111827" }}>
+                  Company Info
+                </p>
+                <Field label="Company Name" icon={<BuildingIcon className="h-4 w-4" />}>
+                  <input
+                    style={inputStyle}
+                    value={form.companyName}
+                    onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                    placeholder="Company name"
+                  />
+                </Field>
+                <Field label="Industry" icon={<BriefcaseIcon className="h-4 w-4" />}>
+                  <input
+                    style={inputStyle}
+                    value={form.industry}
+                    onChange={(e) => setForm({ ...form, industry: e.target.value })}
+                    placeholder="Industry"
+                  />
+                </Field>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-bold" style={{ color: "#111827" }}>
+                  Professional Info
+                </p>
+                <Field label="Skills" icon={<TagIcon className="h-4 w-4" />}>
+                  <input
+                    style={inputStyle}
+                    value={form.skills}
+                    onChange={(e) => setForm({ ...form, skills: e.target.value })}
+                    placeholder="React, TypeScript..."
+                  />
+                </Field>
+                <Field label="Experience" icon={<BriefcaseIcon className="h-4 w-4" />}>
+                  <textarea
+                    rows={4}
+                    style={{ ...inputStyle, resize: "none" }}
+                    value={form.experience}
+                    onChange={(e) => setForm({ ...form, experience: e.target.value })}
+                    placeholder="Work experience..."
+                  />
+                </Field>
+              </>
+            )}
+          </div>
+        )}
 
-        {/* Save button */}
         <button
           type="submit"
           disabled={saving}
@@ -259,11 +375,20 @@ export default function ProfilePage() {
           }}
         >
           {saving ? (
-            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Хадгалж байна...</>
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Saving...
+            </>
           ) : saved ? (
-            <><CheckIcon className="h-4 w-4" /> Хадгалагдлаа</>
+            <>
+              <CheckIcon className="h-4 w-4" />
+              Saved
+            </>
           ) : (
-            <><SaveIcon className="h-4 w-4" /> Хадгалах</>
+            <>
+              <SaveIcon className="h-4 w-4" />
+              Save
+            </>
           )}
         </button>
       </form>

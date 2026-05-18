@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "seed": "ts-node --project tsconfig.json -e \"require('ts-node').register({transpileOnly:true}); require('./prisma/seed.ts')\""
@@ -37,5 +37,10 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next-auth": {
+      "uuid": "^11.1.0"
+    }
   }
 }

@@ -217,6 +217,8 @@ async function main() {
   console.log("🌱 Seed эхэлж байна...");
 
   const password = await bcrypt.hash("password123", 10);
+  const adminPasswordPlain = "Admin@2026";
+  const adminPassword = await bcrypt.hash(adminPasswordPlain, 10);
 
   // Create employers
   const createdEmployers = [];
@@ -280,10 +282,27 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { email: "admin@mindmatch.mn" },
+    update: {
+      name: "MindMatch Admin",
+      role: "ADMIN",
+      password: adminPassword,
+    },
+    create: {
+      name: "MindMatch Admin",
+      email: "admin@mindmatch.mn",
+      password: adminPassword,
+      role: "ADMIN",
+      profile: { create: { bio: "System administrator account" } },
+    },
+  });
+
   console.log(`\n✅ Seed дууслаа!`);
   console.log(`   📋 ${count} ажлын байр, ${employers.length} ажил олгогч нэмэгдлээ`);
   console.log(`\n🔑 Test accounts:`);
   console.log(`   Ажил хайгч: seeker@test.mn / password123`);
+  console.log(`   ADMIN: admin@mindmatch.mn / ${adminPasswordPlain}`);
   employers.forEach(e => console.log(`   ${e.industry}: ${e.email} / password123`));
 }
 
